@@ -1,7 +1,7 @@
 [project]
 name = "mcp-guard"
 version = "0.1.0"
-description = "Add your description here"
+description = "Monitor MCP tool calls from Claude Desktop and Claude Web, and approve or block each one."
 readme = "README.md"
 authors = [
     { name = "Seran R", email = "imhariseran@gmail.com" }
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mcp-guard = "mcp_guard:main"
+mcp-guard = "mcp_guard.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14.0"]
@@ -25,3 +25,8 @@ dev = [
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
