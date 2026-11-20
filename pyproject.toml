@@ -1,0 +1,27 @@
+[project]
+name = "mcp-guard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Seran R", email = "imhariseran@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=2.3.0",
+    "pydantic>=2.14.4",
+    "pyside6>=6.12.0",
+]
+
+[project.scripts]
+mcp-guard = "mcp_guard:main"
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+]
