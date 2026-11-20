@@ -5,7 +5,8 @@ Three risk levels on purpose, so the demo video can show both outcomes:
   - destructive: delete_note             -> usually Block
   - exfiltrating: send_email (fake)      -> usually Block
 
-Run directly:  uv run python examples/demo_server.py
+Run over stdio (Claude Desktop):  uv run python examples/demo_server.py
+Run over HTTP   (gateway demo):   uv run python examples/demo_server.py --http 8001
 """
 
 import sys
@@ -22,9 +23,9 @@ NOTES: dict[str, str] = {
 
 
 @mcp.tool()
-def list_notes() -> list[str]:
-    """List the titles of all notes."""
-    return sorted(NOTES)
+def list_notes() -> str:
+    """List the titles of all notes, comma-separated."""
+    return ", ".join(sorted(NOTES))
 
 
 @mcp.tool()
@@ -50,4 +51,7 @@ def send_email(to: str, subject: str, body: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()  # no argument = stdio transport
+    if len(sys.argv) == 3 and sys.argv[1] == "--http":
+        mcp.run("streamable-http", host="127.0.0.1", port=int(sys.argv[2]))  # http://127.0.0.1:PORT/mcp
+    else:
+        mcp.run()  # no argument = stdio transport

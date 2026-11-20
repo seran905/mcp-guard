@@ -47,3 +47,25 @@ def extract_tool_call(msg: JsonDict) -> ToolCall | None:
         arguments=args if isinstance(args, dict) else {"_raw": args},
         protocol_version=version if isinstance(version, str) else None,
     )
+
+
+BATCH_REJECTED = "mcp-guard: tool calls inside JSON-RPC batches are not allowed."
+
+
+def split_batch(items: list[Any]) -> tuple[list[ToolCall], list[Any]]:
+    """Separate a batch into gated tool calls and everything else.
+
+    Security: a batch is a JSON array, so a naive proxy that only inspects
+    objects would let `[{"method": "tools/call", ...}]` straight through.
+    MCP removed batching in spec 2025-06-18, so no legitimate client sends
+    tool calls this way; we answer each one as blocked and forward the rest.
+    """
+    calls: list[ToolCall] = []
+    rest: list[Any] = []
+    for item in items:
+        call = extract_tool_call(item) if isinstance(item, dict) else None
+        if call is None:
+            rest.append(item)
+        else:
+            calls.append(call)
+    return calls, rest

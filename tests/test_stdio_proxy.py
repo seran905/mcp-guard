@@ -70,3 +70,25 @@ async def test_legacy_session_spec_raw_wire(proxied_demo):
 
     proc.stdin.close()
     assert await asyncio.wait_for(proc.wait(), 10) == 0
+
+
+async def test_batch_cannot_smuggle_tool_calls(proxied_demo, daemon):
+    """Security: a JSON array must not bypass the gate, even if the human would allow it."""
+    import asyncio
+    import json
+    import os
+
+    params = proxied_demo()
+    proc = await asyncio.create_subprocess_exec(
+        params.command, *params.args, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL, env=params.env or os.environ.copy(),
+    )
+    batch = [{"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+              "params": {"name": "delete_note", "arguments": {"title": "welcome"}}}]
+    proc.stdin.write((json.dumps(batch) + "\n").encode())
+    await proc.stdin.drain()
+    reply = json.loads(await asyncio.wait_for(proc.stdout.readline(), 10))
+    assert reply[0]["id"] == 9 and reply[0]["result"]["isError"] is True
+    assert daemon.approver.seen == []  # never even reached the approver
+    proc.stdin.close()
+    await asyncio.wait_for(proc.wait(), 10)

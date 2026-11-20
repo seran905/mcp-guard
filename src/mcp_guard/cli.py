@@ -41,6 +41,13 @@ def build_parser() -> argparse.ArgumentParser:
         if cmd == "install":
             p.add_argument("--add-demo", action="store_true", help="also register examples/demo_server.py")
 
+    gateway = sub.add_parser("gateway", help="guard a remote (Streamable HTTP) MCP server for Claude Web")
+    gateway.add_argument("--upstream", required=True, help="real MCP endpoint, e.g. http://127.0.0.1:8001/mcp")
+    gateway.add_argument("--name", required=True, help="server name shown in the approval popup")
+    gateway.add_argument("--host", default="127.0.0.1")
+    gateway.add_argument("--port", type=int, default=8787)
+    gateway.add_argument("--token", default=None, help="URL secret (default: random each start)")
+
     proxy = sub.add_parser("proxy", help="wrap a stdio MCP server (used from claude_desktop_config.json)")
     proxy.add_argument("--name", required=True, help="server name shown in the approval popup")
     proxy.add_argument("server_command", nargs=argparse.REMAINDER, help="-- <command> [args...]")
@@ -57,6 +64,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in ("install", "uninstall", "status"):
         return _run_installer(args)
+
+    if args.command == "gateway":
+        from mcp_guard.gateway.http_gateway import run_gateway
+
+        return run_gateway(args.upstream, args.name, args.host, args.port, args.token)
 
     if args.command == "proxy":
         from mcp_guard.proxy.stdio_proxy import StdioProxy  # lazy import: keeps other modes fast

@@ -27,7 +27,7 @@ from collections.abc import Sequence
 from mcp_guard.decision.client import request_decision
 from mcp_guard.decision.models import ApprovalRequest, Decision, Verdict
 from mcp_guard.protocol import jsonrpc
-from mcp_guard.protocol.mcp import ToolCall, extract_tool_call
+from mcp_guard.protocol.mcp import BATCH_REJECTED, ToolCall, extract_tool_call, split_batch
 
 log = logging.getLogger(__name__)
 
@@ -123,6 +123,11 @@ class StdioProxy:
             if not line:  # b"" means EOF: Claude closed our stdin
                 return
 
+            batch = jsonrpc.parse_batch(line)
+            if batch is not None:
+                await self._handle_batch(batch, line)
+                continue
+
             msg = jsonrpc.parse_line(line)
             call = extract_tool_call(msg) if msg is not None else None
 
@@ -137,6 +142,18 @@ class StdioProxy:
             task = asyncio.create_task(self._gate(call, line), name=f"gate-{call.request_id}")
             self._pending[call.request_id] = task
             task.add_done_callback(lambda t, rid=call.request_id: self._forget(rid, t))
+
+    async def _handle_batch(self, batch: list[object], raw: bytes) -> None:
+        calls, rest = split_batch(batch)
+        if not calls:
+            await self._send_to_server(raw)
+            return
+        log.warning("BLOCK %d tool call(s) smuggled in a JSON-RPC batch", len(calls))
+        await self._send_to_client(
+            jsonrpc.encode([jsonrpc.make_blocked_result(c.request_id, BATCH_REJECTED, c.protocol_version) for c in calls])
+        )
+        if rest:
+            await self._send_to_server(jsonrpc.encode(rest))
 
     async def _pump_server_to_client(self) -> None:
         assert self._child is not None and self._child.stdout is not None

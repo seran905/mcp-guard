@@ -28,7 +28,16 @@ def parse_line(line: bytes) -> JsonDict | None:
     return msg if isinstance(msg, dict) else None
 
 
-def encode(msg: JsonDict) -> bytes:
+def parse_batch(line: bytes) -> list[Any] | None:
+    """Return the items if `line` is a JSON-RPC batch (a JSON array), else None."""
+    try:
+        msg = json.loads(line)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return msg if isinstance(msg, list) else None
+
+
+def encode(msg: JsonDict | list[Any]) -> bytes:
     """Serialise a message as one newline-terminated line."""
     return (json.dumps(msg, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
 
