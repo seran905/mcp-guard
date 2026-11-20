@@ -26,7 +26,7 @@ async def test_blocked_call_never_reaches_server(proxied_demo):
         still_there = await client.call_tool("read_note", {"title": "welcome"})
         assert "Hello" in still_there.content[0].text
 
-async def test_blocked_every_tool_reaches_server(proxied_demo):
+async def test_wildcard_blocks_every_tool(proxied_demo):
     async with Client(proxied_demo(block="*")) as client:
         result = await client.call_tool("read_note", {"title": "welcome"})
         assert result.is_error
